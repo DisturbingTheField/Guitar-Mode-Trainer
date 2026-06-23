@@ -1,0 +1,320 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guitar Mode Trainer</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #ffffff;
+            --accent-color: #4caf50;
+            --stop-color: #f44336;
+            --muted-color: #aaa;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        /* Vertical mobile layout */
+        .container {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            text-align: center;
+        }
+
+        /* Top display section */
+        .display-card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 40px 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            min-height: 220px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #333;
+        }
+
+        #flashcard {
+            font-weight: 800;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            transition: font-size 0.1s ease;
+        }
+
+        #timer {
+            font-size: 1.8rem;
+            color: var(--accent-color);
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+            margin-bottom: 10px;
+        }
+
+        #counter {
+            font-size: 1rem;
+            color: var(--muted-color);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Control panel below */
+        .controls-card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border: 1px solid #333;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+            gap: 5px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            color: var(--muted-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input, select {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--accent-color);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        #startBtn {
+            background-color: var(--accent-color);
+            color: black;
+        }
+
+        #startBtn:disabled {
+            background-color: #2e5a31;
+            color: #888;
+            cursor: not-allowed;
+        }
+
+        #stopBtn {
+            background-color: var(--stop-color);
+            color: white;
+        }
+
+        #stopBtn:disabled {
+            background-color: #5a2320;
+            color: #888;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <div class="display-card">
+            <div id="flashcard">READY?</div>
+            <div id="timer">--</div>
+            <div id="counter">Remaining: 98 / 98</div>
+        </div>
+
+        <div class="controls-card">
+            
+            <div class="input-group">
+                <label for="secondsInput">Time per mode (1 - 300 sec):</label>
+                <input type="number" id="secondsInput" value="5" min="1" max="300">
+            </div>
+
+            <div class="input-group">
+                <label for="fontSizeSelect">Text Size:</label>
+                <select id="fontSizeSelect">
+                    <option value="2rem">Size 1 (Small)</option>
+                    <option value="2.5rem">Size 2</option>
+                    <option value="3rem">Size 3</option>
+                    <option value="3.5rem">Size 4</option>
+                    <option value="4rem" selected>Size 5 (Default)</option>
+                    <option value="4.5rem">Size 6</option>
+                    <option value="5rem">Size 7</option>
+                    <option value="5.5rem">Size 8</option>
+                    <option value="6rem">Size 9</option>
+                    <option value="6.5rem">Size 10 (Huge)</option>
+                </select>
+            </div>
+
+            <div class="btn-group">
+                <button id="startBtn">START</button>
+                <button id="stopBtn" disabled>STOP</button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Data setup
+        const strings = ['E', 'A'];
+        const keys = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+        const modes = ['Ion', 'Dor', 'Phr', 'Lyd', 'Mix', 'Aeo', 'Loc'];
+        const totalCombinations = strings.length * keys.length * modes.length; // 98
+
+        let deck = [];
+        let intervalId = null;
+        let countdownId = null;
+        let timePerCard = 5;
+        let timeLeft = 0;
+
+        // DOM Elements
+        const flashcardEl = document.getElementById('flashcard');
+        const timerEl = document.getElementById('timer');
+        const counterEl = document.getElementById('counter');
+        const secondsInput = document.getElementById('secondsInput');
+        const fontSizeSelect = document.getElementById('fontSizeSelect');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+
+        // Generate all 98 combinations and shuffle them (Fisher-Yates Shuffle)
+        function generateShuffledDeck() {
+            let newDeck = [];
+            for (let s of strings) {
+                for (let k of keys) {
+                    for (let m of modes) {
+                        newDeck.push(`${s}: ${k} ${m}`);
+                    }
+                }
+            }
+            
+            // Shuffle
+            for (let i = newDeck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
+            }
+            return newDeck;
+        }
+
+        // Dynamically update font size
+        function updateFontSize() {
+            flashcardEl.style.fontSize = fontSizeSelect.value;
+        }
+        fontSizeSelect.addEventListener('change', updateFontSize);
+        updateFontSize(); // Initialize once
+
+        // Validate seconds input (keep between 1 and 300)
+        secondsInput.addEventListener('change', () => {
+            let val = parseInt(secondsInput.value);
+            if (isNaN(val) || val < 1) secondsInput.value = 1;
+            if (val > 300) secondsInput.value = 300;
+        });
+
+        // Show next card
+        function nextCard() {
+            // If the deck is empty, regenerate and reshuffle for a new round
+            if (deck.length === 0) {
+                deck = generateShuffledDeck();
+            }
+            
+            // Update the counter before popping so it reflects the current card being played
+            counterEl.innerText = `Remaining: ${deck.length} / ${totalCombinations}`;
+
+            // Pull the top card from the shuffled deck
+            const currentCard = deck.pop();
+            flashcardEl.innerText = currentCard;
+            
+            // Reset and start local countdown timer for this card
+            timeLeft = timePerCard;
+            timerEl.innerText = timeLeft;
+            
+            clearInterval(countdownId);
+            countdownId = setInterval(() => {
+                timeLeft--;
+                if (timeLeft >= 0) {
+                    timerEl.innerText = timeLeft;
+                }
+                if (timeLeft <= 0) {
+                    clearInterval(countdownId);
+                }
+            }, 1000);
+        }
+
+        // Start routine
+        function startTrainer() {
+            timePerCard = parseInt(secondsInput.value) || 5;
+            deck = generateShuffledDeck(); // Create a fresh, shuffled 98-card loop
+            
+            // Disable inputs while running to avoid configuration bugs
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            secondsInput.disabled = true;
+
+            // Trigger immediately
+            nextCard();
+
+            // Setup main interval loop to change cards
+            intervalId = setInterval(nextCard, timePerCard * 1000);
+        }
+
+        // Stop routine
+        function stopTrainer() {
+            clearInterval(intervalId);
+            clearInterval(countdownId);
+            
+            flashcardEl.innerText = "READY?";
+            timerEl.innerText = "--";
+            counterEl.innerText = `Remaining: ${totalCombinations} / ${totalCombinations}`;
+            
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            secondsInput.disabled = false;
+        }
+
+        // Event Listeners
+        startBtn.addEventListener('click', startTrainer);
+        stopBtn.addEventListener('click', stopTrainer);
+    </script>
+</body>
+</html>
